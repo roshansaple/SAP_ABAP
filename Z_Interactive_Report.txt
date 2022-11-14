@@ -1,0 +1,156 @@
+REPORT Z_Interactive_Report.
+
+
+TYPE-POOLS slis.
+TABLES mard.
+
+
+*declaration.
+TYPES : BEGIN OF ty_mard,
+          matnr TYPE mard-matnr,
+          werks TYPE mard-werks,
+          lgort TYPE mard-lgort,
+        END OF ty_mard.
+
+TYPES : BEGIN OF ty_makt,
+          matnr TYPE makt-matnr,
+          maktx TYPE makt-maktx,
+        END OF ty_makt.
+
+DATA : wa_makt TYPE ty_makt,
+       it_makt TYPE TABLE OF ty_makt.
+
+DATA : wa_mard TYPE ty_mard,
+       it_mard TYPE TABLE OF ty_mard.
+
+DATA : it_fcat TYPE slis_t_fieldcat_alv,
+       wa_fcat LIKE LINE OF it_fcat.
+
+DATA : it_fcat1 TYPE slis_t_fieldcat_alv,
+       wa_fcat1 LIKE LINE OF it_fcat1.
+
+DATA : it_event TYPE slis_t_event,
+       wa_event LIKE LINE OF it_event.
+
+
+
+DATA: lv_col_pos TYPE sy-cucol.
+
+
+
+INITIALIZATION.
+
+
+  SELECTION-SCREEN BEGIN OF BLOCK a WITH FRAME TITLE text-100.
+
+  PARAMETER : p_werks TYPE mard-werks OBLIGATORY,
+              p_lgort TYPE mard-lgort OBLIGATORY.
+
+  SELECTION-SCREEN END OF BLOCK a.
+
+
+START-OF-SELECTION.
+  SELECT matnr werks lgort FROM mard INTO TABLE it_mard WHERE
+  werks = p_werks AND lgort = p_lgort.
+
+  IF it_mard IS NOT INITIAL.
+    SELECT matnr maktx FROM makt INTO TABLE it_makt FOR ALL ENTRIES IN it_mard WHERE matnr = it_mard-matnr.
+  ENDIF.
+
+  CLEAR  lv_col_pos.
+  PERFORM prepare_fcat_1list USING 'MATNR'
+                               lv_col_pos
+                               'MATERIAL'.
+
+
+  PERFORM prepare_fcat_1list USING 'WERKS'
+                                 lv_col_pos
+                                 'PLANT'.
+
+  PERFORM prepare_fcat_1list USING 'LGORT'
+                                 lv_col_pos
+                                 'STORAGE LOC'.
+
+
+  wa_fcat1-fieldname = 'MATNR'.
+  wa_fcat1-ctabname = 'IT_MAKT'.
+  wa_fcat1-col_pos   = '1'.
+  wa_fcat1-seltext_m = 'MATERIAL NO.'.
+  APPEND wa_fcat1 TO it_fcat1.
+  CLEAR wa_fcat1.
+
+  wa_fcat1-fieldname = 'MAKTX'.
+  wa_fcat1-ctabname = 'IT_MAKT'.
+  wa_fcat1-col_pos   = '2'.
+  wa_fcat1-seltext_m = 'DISCRIPTION'.
+  APPEND wa_fcat1 TO it_fcat1.
+  CLEAR wa_fcat1.
+
+
+  wa_event-name = 'USER_COMMAND'.
+  wa_event-form = 'UC'.
+  APPEND wa_event TO it_event.
+
+*  CALL FUNCTION 'REUSE_ALV_LIST_DISPLAY'
+*    EXPORTING
+*      i_callback_program = 'ZRS_TEST'
+*      it_fieldcat        = it_fcat
+*      it_events          = it_event
+*    TABLES
+*      t_outtab           = it_mard.
+
+  CALL FUNCTION 'REUSE_ALV_LIST_DISPLAY'
+    EXPORTING
+      i_callback_program = sy-repid
+      it_fieldcat        = it_fcat1
+      it_events          = it_event
+    TABLES
+      t_outtab           = it_makt.
+
+END-OF-SELECTION.
+
+
+
+FORM uc USING a LIKE sy-ucomm b TYPE slis_selfield.
+
+  DATA it_mara LIKE TABLE OF mara.
+  DATA: lv_matnr TYPE matnr.
+
+  IF b-fieldname = 'MATNR'.
+
+
+    CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+      EXPORTING
+        input        = b-value   "456789
+      IMPORTING
+        output       = lv_matnr     "00000000000456789
+      EXCEPTIONS
+        length_error = 1
+        OTHERS       = 2.
+
+    SELECT * FROM mara INTO TABLE it_mara WHERE matnr = lv_matnr .
+
+    CALL FUNCTION 'REUSE_ALV_LIST_DISPLAY'
+      EXPORTING
+        i_structure_name = 'MARA'
+      TABLES
+        t_outtab         = it_mara.
+
+  ENDIF.
+ENDFORM.
+
+
+FORM prepare_fcat_1list USING puv_fieldname
+      puv_col_pos
+      puv_seltext_m.
+
+  puv_col_pos = puv_col_pos + 1.
+
+  wa_fcat-fieldname =  puv_fieldname.
+  wa_fcat-col_pos   = puv_col_pos.
+  wa_fcat-seltext_m = puv_seltext_m.
+  APPEND wa_fcat TO it_fcat.
+  CLEAR wa_fcat.
+
+
+ENDFORM.
