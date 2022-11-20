@@ -1,0 +1,22 @@
+*Based on the given purchase document number to display the all the purchase document header details by developing the function module.
+
+
+REPORT ZRS_FM_01.
+
+PARAMETER P_EBELN TYPE EKKO-EBELN.
+
+DATA WA_EKKO TYPE EKKO.
+
+CALL FUNCTION 'ZRS_FM_01'
+
+  EXPORTING
+    i_ebeln       = P_EBELN
+
+
+ IMPORTING
+   E_WA          = WA_EKKO.
+
+
+WRITE : / WA_EKKO-EBELN,
+          WA_EKKO-BEDAT,
+          WA_EKKO-LIFNR.
